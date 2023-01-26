@@ -64,10 +64,13 @@ public:
 	bool GetRight();
 	bool GetFire();
 	bool GetEnterExitVehicle();
+	bool GetHandbrake();
 	bool GetJump();
 	bool GetCycleWeaponLeft();
 	bool GetCycleWeaponRight();
 	bool GetSpecial();
+	bool GetHorn();
+
 };
 
 

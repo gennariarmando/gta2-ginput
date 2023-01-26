@@ -7,13 +7,55 @@
 #include "CPed.h"
 #include "CGame.h"
 #include "CText.h"
+#include "CChar.h"
+#include "CGame.h"
+#include "common.h"
 
 using namespace plugin;
 
 class GTA2GInput {
 public:
+    static void ProcessVibration(CPed* ped) {
+        if (!ped || ped->m_nHealth <= 0)
+            return;
+
+        CPad* pad = CPad::GetPad(0);
+
+        CWeapon* weapon = ped->m_pSelectedWeapon;
+        CCar* car = ped->m_pCurrentCar;
+
+        if (weapon) {
+            static int previousAmmo = 0;
+
+            if (weapon->m_nTimer && weapon->m_nAmmo != previousAmmo) {
+                pad->StartShake(100, 120);
+                previousAmmo = weapon->m_nAmmo;
+            }
+        }
+
+        static short previousHealth = ped->m_nHealth;
+        if (previousHealth != ped->m_nHealth) {
+            pad->StartShake(100, 80);
+            previousHealth = ped->m_nHealth;
+        }
+
+
+        if (car) {
+            CCarPhysics* physics = car->m_pPhysics;
+            if ((physics->m_vVelocity.FromInt16().Magnitude() > 0.01f && physics->m_nTileSurfaceType == TILE_SURFACE_TYPE_GRASS)) {
+                pad->StartShake(50, 80);
+            }
+
+            static int previousDamage = car->m_nDamage;
+            if (car->m_nDamage != previousDamage) {
+                pad->StartShake(50, 80);
+                previousDamage = car->m_nDamage;
+            }
+        }
+    }
+
     GTA2GInput() {
-        plugin::Events::initEngineEvent += []() {
+        plugin::Events::initEngineEvent.before += []() {
             settings.Read();
 
             Pads[0] = new CPad();
@@ -49,31 +91,41 @@ public:
         ThiscallEvent <AddressList<0x4A7683, H_CALL>, PRIORITY_AFTER, ArgPickN<CPlayerPed*, 0>, void(CPlayerPed*)> onGetPlayerKeyStates;
         onGetPlayerKeyStates += [](CPlayerPed* _this) {
             if (_this == GetGame()->m_pCurrentPlayer) {
+                CPed* ped = _this->m_pPed;
+                CCar* car = ped->m_pCurrentCar;
                 CPad* pad = CPad::GetPad(0);
                 pad->Update();
 
+
                 // Player
+                bool b = _this->m_bButtonForward;
                 _this->m_bButtonForward |= pad->GetForward();
+                _this->m_bOldButtonForward |= pad->GetForward();
+
                 _this->m_bButtonBackward |= pad->GetBackward();
+                _this->m_bOldButtonBackward |= pad->GetBackward();
+
                 _this->m_bButtonLeft |= pad->GetLeft();
                 _this->m_bButtonRight |= pad->GetRight();
 
                 _this->m_bButtonAttack |= pad->GetFire();
+                _this->m_bOldButtonAttack |= !pad->GetFire();
 
-                _this->m_bOldButtonEnterExit |= pad->GetEnterExitVehicle();
                 _this->m_bButtonEnterExit |= pad->GetEnterExitVehicle();
+                _this->m_bOldButtonEnterExit |= pad->GetEnterExitVehicle();
 
-                _this->m_bOldButtonHandbrakeJump |= pad->GetJump();
-                _this->m_bButtonHandbrakeJump |= pad->GetJump();
+                bool vehicle = ped && car;
+                _this->m_bButtonHandbrakeJump |= vehicle ? pad->GetHandbrake() : pad->GetJump();
+                _this->m_bOldButtonHandbrakeJump |= vehicle ? pad->GetHandbrake() : pad->GetJump();
 
                 _this->m_bButtonPrevWeapon |= pad->GetCycleWeaponLeft();
-                _this->m_bButtonNextWeapon |= pad->GetCycleWeaponRight();
-
                 _this->m_bOldButtonPrevWeapon |= pad->GetCycleWeaponLeft();
+
+                _this->m_bButtonNextWeapon |= pad->GetCycleWeaponRight();
                 _this->m_bOldButtonNextWeapon |= pad->GetCycleWeaponRight();
 
-                _this->m_bButtonSpecial |= pad->GetSpecial();
-                _this->m_bOldButtonSpecial |= pad->GetSpecial();
+                _this->m_bButtonSpecial |= vehicle ? pad->GetHorn() : pad->GetSpecial();
+                _this->m_bOldButtonSpecial |= vehicle ? pad->GetHorn() : pad->GetSpecial();
 
                 // Menu
                 if (pad->NewState.Start && !pad->OldState.Start) {
@@ -98,6 +150,10 @@ public:
                 }
 
                 pad->DisableControls = GetGame()->GetIsUserPaused();
+
+                // Vibration
+                if (settings.Vibration)
+                    ProcessVibration(_this->m_pPed);
             }
         };
     }

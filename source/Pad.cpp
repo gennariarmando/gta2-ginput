@@ -1,5 +1,6 @@
 #include "plugin.h"
 #include "Pad.h"
+#include "Settings.h"
 //#include "PadAPI.h"
 
 #pragma comment(lib, "Xinput9_1_0.lib")
@@ -78,7 +79,8 @@ void CPad::Update() {
 	ZeroMemory(&state, sizeof(XINPUT_STATE));
 	if (XInputGetState(0, &state) == ERROR_SUCCESS) {
 		if (!PadConnected) {
-			StartShake(250, 250);
+			if (settings.VibrateOnRecon)
+				StartShake(250, 250);
 			PadConnected = true;
 		}
 
@@ -309,6 +311,26 @@ bool CPad::GetEnterExitVehicle() {
 	return false;
 }
 
+bool CPad::GetHandbrake() {
+#pragma comment(linker, "/EXPORT:" __FUNCTION__"=" __FUNCDNAME__)
+
+	if (DisableControls)
+		return false;
+
+	switch (Mode) {
+	case 0:
+	case 1:
+		return NewState.RightShoulder1;
+	case 2:
+	case 3:
+		return NewState.Circle;
+	case 4:
+		return NewState.LeftShoulder1;
+	}
+
+	return false;
+}
+
 bool CPad::GetJump() {
 #pragma comment(linker, "/EXPORT:" __FUNCTION__"=" __FUNCDNAME__)
 
@@ -382,6 +404,26 @@ bool CPad::GetSpecial() {
 	case 3:
 	case 4:
 		return NewState.Square && !OldState.Square;
+	}
+
+	return false;
+}
+
+bool CPad::GetHorn() {
+#pragma comment(linker, "/EXPORT:" __FUNCTION__"=" __FUNCDNAME__)
+
+	if (DisableControls)
+		return false;
+
+	switch (Mode) {
+	case 0:
+		return NewState.Circle;
+	case 1:
+		return NewState.RightShoulder2;
+	case 2:
+	case 3:
+	case 4:
+		return NewState.Square;
 	}
 
 	return false;
