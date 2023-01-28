@@ -7,10 +7,14 @@ void Settings::Read() {
     plugin::config_file config(PLUGIN_PATH("GInputII.ini"));
 
     // GInput
-    VibrateOnRecon = config["VibrateOnRecon"].asBool(true);
-    Vibration = config["Vibration"].asBool(true);
+    Vibration = config["Vibration"].asBool();
+    MapPadOneToPadTwo = config["MapPadOneToPadTwo"].asBool();
 
-    // Pad
-    ControlSetP1 = config["ControlSetP1"].asInt(0);
-    ControlSetP2 = config["ControlSetP2"].asInt(0);
+    // Pad1
+    ControlSetP1 = config["ControlSetP1"].asInt();
+    LeftStickDeadZoneP1 = config["LeftStickDeadZoneP1"].asInt() / 100.0f;
+
+    // Pad2
+    ControlSetP2 = config["ControlSetP2"].asInt();
+    LeftStickDeadZoneP2 = config["LeftStickDeadZoneP2"].asInt() / 100.0f;
 }

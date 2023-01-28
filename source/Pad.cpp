@@ -11,6 +11,13 @@ XINPUT_VIBRATION XInputVibration[MAX_PADS];
 
 int PadsCount = 0;
 
+void CKeyboardState::Clear() {
+#pragma comment(linker, "/EXPORT:" __FUNCTION__"=" __FUNCDNAME__)
+
+	for (unsigned int i = 0; i < 256; i++)
+		keys[i] = 0;
+}
+
 void CControllerState::Clear() {
 #pragma comment(linker, "/EXPORT:" __FUNCTION__"=" __FUNCDNAME__)
 
@@ -65,10 +72,32 @@ CPad::CPad() {
 	PadConnected = false;
 	ShakeDur = 0;
 	ShakeFreq = 1;
+	StickDeadZone = 0.02f;
 }
 
 CPad::~CPad() {
+#pragma comment(linker, "/EXPORT:" __FUNCTION__"=" __FUNCDNAME__)
+
 	PadsCount--;
+	StopShaking();
+}
+
+void CPad::UpdateKeyboard(int* key, bool arr) {
+#pragma comment(linker, "/EXPORT:" __FUNCTION__"=" __FUNCDNAME__)
+
+	OldKeyState = NewKeyState;
+	NewKeyState = TempKeyState;
+
+	if (arr) {
+		for (unsigned int i = 0; i < 256; i++) {
+			TempKeyState.keys[i] = ((char*)(key))[i] ? 1 : 0;
+		}
+	}
+	else {
+		for (unsigned int i = 0; i < 256; i++) {
+			TempKeyState.keys[i] = (((*key >> 12) & 0x1FF) == i) ? 1 : 0;
+		}
+	}
 }
 
 void CPad::Update() {
@@ -77,10 +106,10 @@ void CPad::Update() {
 	XINPUT_STATE& state = XInputState[Index];
 
 	ZeroMemory(&state, sizeof(XINPUT_STATE));
-	if (XInputGetState(0, &state) == ERROR_SUCCESS) {
+	if (XInputGetState(Index, &state) == ERROR_SUCCESS) {
 		if (!PadConnected) {
-			if (settings.VibrateOnRecon)
-				StartShake(250, 250);
+			StopShaking();
+			//StartShake(250, 250);
 			PadConnected = true;
 		}
 
@@ -92,12 +121,25 @@ void CPad::Update() {
 		float normRX = fmaxf(-1.0f, state.Gamepad.sThumbRX / 32767.0f);
 		float normRY = fmaxf(-1.0f, state.Gamepad.sThumbRY / 32767.0f);
 
-		float deadzoneX = 0.02f;
-		float deadzoneY = 0.02f;
+		float deadzoneX = StickDeadZone;
+		float deadzoneY = StickDeadZone;
 		float leftStickX = (abs(normLX) < deadzoneX ? 0 : normLX);
 		float leftStickY = (abs(normLY) < deadzoneY ? 0 : normLY);
+
+		leftStickX = (abs(normLX) < deadzoneX ? 0 : (abs(normLX) - deadzoneX) * (normLX / abs(normLX)));
+		leftStickY = (abs(normLY) < deadzoneY ? 0 : (abs(normLY) - deadzoneY) * (normLY / abs(normLY)));
+
+		if (deadzoneX > 0) leftStickX /= 1 - deadzoneX;
+		if (deadzoneY > 0) leftStickY /= 1 - deadzoneY;
+
 		float rightStickX = (abs(normRX) < deadzoneX ? 0 : normRX);
 		float rightStickY = (abs(normRY) < deadzoneY ? 0 : normRY);
+
+		rightStickX = (abs(normRX) < deadzoneX ? 0 : (abs(normRX) - deadzoneX) * (normRX / abs(normRX)));
+		rightStickY = (abs(normRY) < deadzoneY ? 0 : (abs(normRY) - deadzoneY) * (normRY / abs(normRY)));
+
+		if (deadzoneX > 0) rightStickX /= 1 - deadzoneX;
+		if (deadzoneY > 0) rightStickY /= 1 - deadzoneY;
 
 		TempState.LeftStickX = leftStickX;
 		TempState.LeftStickY = leftStickY;
@@ -145,8 +187,10 @@ void CPad::Update() {
 		}
 	}
 	else {
-		PadConnected = false;
-		Clear();
+		if (PadConnected) {
+			Clear();
+			PadConnected = false;
+		}
 	}
 }
 
@@ -183,6 +227,13 @@ void CPad::Clear() {
 	OldState.Clear();
 	NewState.Clear();
 	TempState.Clear();
+
+	NewKeyState.Clear();
+	OldKeyState.Clear();
+	TempKeyState.Clear();
+
+	ShakeFreq = 0;
+	ShakeDur = 0;
 }
 
 bool CPad::IsConnected() {
