@@ -141,10 +141,10 @@ void CPad::Update() {
 		if (deadzoneX > 0) rightStickX /= 1 - deadzoneX;
 		if (deadzoneY > 0) rightStickY /= 1 - deadzoneY;
 
-		TempState.LeftStickX = leftStickX;
-		TempState.LeftStickY = leftStickY;
-		TempState.RightStickX = rightStickX;
-		TempState.RightStickY = rightStickY;
+		TempState.LeftStickX = static_cast<short>(leftStickX * 255);
+		TempState.LeftStickY = static_cast<short>(leftStickY * 255);
+		TempState.RightStickX = static_cast<short>(rightStickX * 255);
+		TempState.RightStickY = static_cast<short>(rightStickY * 255);
 
 		float val = state.Gamepad.bLeftTrigger;
 		TempState.LeftShoulder2 = static_cast<short>(val > XINPUT_GAMEPAD_TRIGGER_THRESHOLD ? (val - XINPUT_GAMEPAD_TRIGGER_THRESHOLD) * (255.0f / (255.0f - XINPUT_GAMEPAD_TRIGGER_THRESHOLD)) : 0);

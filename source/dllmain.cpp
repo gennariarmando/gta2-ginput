@@ -14,6 +14,8 @@
 #include "CFont.h"
 #include "CCamera.h"
 #include "CHud.h"
+#include "cDMAudio.h"
+
 
 using namespace plugin;
 
@@ -164,15 +166,25 @@ public:
         pad->Update();
         pad->UpdateKeyboard((int*)_this->m_nKeys, true);
 
-        _this->OldKeyState.left |= pad->OldState.DPadLeft ? 1 : 0;
-        _this->OldKeyState.right |= pad->OldState.DPadRight ? 1 : 0;
+        _this->OldKeyState.left |= ((pad->OldState.DPadLeft) || (pad->OldState.LeftStickX < 0)) ? 1 : 0;
+        _this->NewKeyState.left |= ((pad->NewState.DPadLeft && !pad->OldState.DPadLeft) || (pad->NewState.LeftStickX < 0 && !pad->OldState.LeftStickX)) ? 1 : 0;
 
-        _this->NewKeyState.left |= (pad->NewState.DPadLeft && !pad->OldState.DPadLeft) ? 1 : 0;
-        _this->NewKeyState.right |= (pad->NewState.DPadRight && !pad->OldState.DPadRight) ? 1 : 0;
-        _this->NewKeyState.up |= (pad->NewState.DPadUp && !pad->OldState.DPadUp) ? 1 : 0;
-        _this->NewKeyState.down |= (pad->NewState.DPadDown && !pad->OldState.DPadDown) ? 1 : 0;
+        _this->OldKeyState.right |= ((pad->OldState.DPadRight) || (pad->OldState.LeftStickX > 0)) ? 1 : 0;
+        _this->NewKeyState.right |= ((pad->NewState.DPadRight && !pad->OldState.DPadRight) || (pad->NewState.LeftStickX > 0 && !pad->OldState.LeftStickX)) ? 1 : 0;
+
+        _this->OldKeyState.up |= ((pad->OldState.DPadUp) || (pad->OldState.LeftStickY > 0)) ? 1 : 0;
+        _this->NewKeyState.up |= ((pad->NewState.DPadUp && !pad->OldState.DPadUp) || (pad->NewState.LeftStickY > 0 && !pad->OldState.LeftStickY)) ? 1 : 0;
+
+        _this->OldKeyState.down |= ((pad->OldState.DPadDown) || (pad->OldState.LeftStickY < 0)) ? 1 : 0;
+        _this->NewKeyState.down |= ((pad->NewState.DPadDown && !pad->OldState.DPadDown) || (pad->NewState.LeftStickY < 0 && !pad->OldState.LeftStickY)) ? 1 : 0;
+
+        _this->OldKeyState.enter |= (pad->OldState.Cross) ? 1 : 0;
         _this->NewKeyState.enter |= (pad->NewState.Cross && !pad->OldState.Cross) ? 1 : 0;
+
+        _this->OldKeyState.esc |= (pad->OldState.Triangle) ? 1 : 0;
         _this->NewKeyState.esc |= (pad->NewState.Triangle && !pad->OldState.Triangle) ? 1 : 0;
+
+        _this->OldKeyState.del |= (pad->OldState.Square) ? 1 : 0;
         _this->NewKeyState.del |= (pad->NewState.Square && !pad->OldState.Square) ? 1 : 0;
 
         if (pad->NewState.CheckForInput())
@@ -208,6 +220,17 @@ public:
         ThiscallEvent <AddressList<0x45A253, H_CALL, 0x45A415, H_CALL, 0x45348E, H_CALL>, PRIORITY_AFTER, ArgPickN<CMenuManager*, 0>, void(CMenuManager*)> onGetMenuKeyStates;
         onGetMenuKeyStates += [](CMenuManager* _this) {
             ProcessMenuControls(_this);
+        };
+
+        ThiscallEvent <AddressList<0x45A280, H_CALL>, PRIORITY_AFTER, ArgPickN<CMenuManager*, 0>, void(CMenuManager*)> onInputPlayerName;
+        onInputPlayerName.before += [](CMenuManager* _this) {
+            CPad* pad = CPad::GetPad(0);
+            if (pad->NewState.Triangle && !pad->OldState.Triangle) {
+                _this->m_nState = 1;
+                plugin::CallMethod<0x4524C0>(_this);
+                _this->m_MenuPages[1].currentMenuItem = 0;
+                cDMAudio::NewFrontendAudioObject.type = 6;
+            }
         };
 
         ThiscallEvent <AddressList<0x45C3B3, H_CALL>, PRIORITY_AFTER, ArgPickN<CGame*, 0>, void(CGame*)> onPadUpdate;
