@@ -1,11 +1,9 @@
 /*
  *
  * GTA2 - GInput API ver 0.100 - 28/01/2023
- * Usage: Add this file to your project, call CPad::GetPad(x).
  *
  */
 #pragma once
-#define GET_VARIABLE_NAME(Variable) (#Variable)
 #include "ModuleList.hpp"
 
 struct ApiCALL {
@@ -274,10 +272,8 @@ public:
 		ApiCALL::CallMethod(__FUNCTION__, this, key, arr);
 	}
 
-	CPad() {
-		ApiCALL::CallMethod(__FUNCTION__, this);
-	}
-	~CPad(){}
+	CPad() {}
+	~CPad() {}
 
 	void Update() {
 		ApiCALL::CallMethod(__FUNCTION__, this);
