@@ -13,6 +13,7 @@
 #include "CReplay.h"
 #include "CFont.h"
 #include "CCamera.h"
+#include "CHud.h"
 
 using namespace plugin;
 
@@ -45,7 +46,7 @@ public:
 
         if (car) {
             CCarPhysics* physics = car->m_pPhysics;
-            if ((physics->m_vVelocity.FromInt16().Magnitude() > 0.01f && physics->m_nTileSurfaceType == TILE_SURFACE_TYPE_GRASS)) {
+            if (physics && (physics->m_vVelocity.FromInt16().Magnitude() > 0.01f && physics->m_nTileSurfaceType == TILE_SURFACE_TYPE_GRASS)) {
                 pad->StartShake(50, 80);
             }
 
@@ -95,7 +96,7 @@ public:
         _this->m_bButtonRight |= pad->GetRight();
 
         _this->m_bButtonAttack |= pad->GetFire();
-        _this->m_bOldButtonAttack |= !pad->GetFire();
+        _this->m_bOldButtonAttack |= pad->GetFire();
 
         _this->m_bButtonEnterExit |= pad->GetEnterExitVehicle();
         _this->m_bOldButtonEnterExit |= pad->GetEnterExitVehicle();
@@ -119,10 +120,11 @@ public:
     }
 
     static void ProcessPad(CGame* game) {
+
         for (auto& it : Pads)
             it->Update();
 
-        int* key = &game->m_pCurrentPlayer->m_nKeyboardKey;
+        int* key = &game->FindPlayerPed(0)->m_nKeyboardKey;
         CPad::GetPad(0)->UpdateKeyboard(key, false);
 
         if (gReplay->IsPlayingBack()) {
@@ -131,7 +133,7 @@ public:
             return;
         }
 
-        CPlayerPed* playa = game->m_pCurrentPlayer;
+        CPlayerPed* playa = game->FindPlayerPed(0);
         CPad* pad = CPad::GetPad(0);
         if (pad->NewState.Start && !pad->OldState.Start) {
             playa->ProcessKeyPresses(DIK_F6);
@@ -202,7 +204,7 @@ public:
         plugin::Events::shutdownEngineEvent.before += []() {
             ShutdownPad();
         };
-
+        
         ThiscallEvent <AddressList<0x45A253, H_CALL, 0x45A415, H_CALL, 0x45348E, H_CALL>, PRIORITY_AFTER, ArgPickN<CMenuManager*, 0>, void(CMenuManager*)> onGetMenuKeyStates;
         onGetMenuKeyStates += [](CMenuManager* _this) {
             ProcessMenuControls(_this);
